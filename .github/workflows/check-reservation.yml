@@ -2,9 +2,12 @@ name: Check Sherlock Holmes Reservation
 
 on:
   schedule:
-    # KST 매일 오전 8시, 9시, 10시 실행 (UTC: 전날 23시, 당일 0시, 1시)
-    # GitHub Actions의 Cron은 UTC 기준입니다.
-    - cron: '0 23,0,1 * * *'
+    # KST 매일 오전 9:40 ~ 9:50 (10분 간격) -> UTC: 당일 0시 (40, 50분)
+    - cron: '40,50 0 * * *'
+    # KST 매일 오전 10:00 ~ 10:50 (10분 간격) -> UTC: 당일 1시 (10분 간격)
+    - cron: '*/10 1 * * *'
+    # KST 매일 오전 11:00 ~ 11:30 (10분 간격) -> UTC: 당일 2시 (0, 10, 20, 30분)
+    - cron: '0,10,20,30 2 * * *'
   workflow_dispatch: # GitHub 웹 UI에서 수동 실행 버튼 활성화
 
 jobs:

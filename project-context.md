@@ -34,7 +34,7 @@
   - `src/notifier.py`: Pushover `priority=2`, `sound=siren`, `retry=60`, `expire=3600` API 연동 완료.
   - `src/scraper.py`: Playwright 기반으로 15개 전체 테마를 수집한 후, 낮 12시 이전의 완료 타임(`.col.false`)을 추출하는 비동기 크롤러 구현 완료.
   - `src/main.py`: 환경 변수를 반영하고 예약 감시 조건을 판단해 알림을 쏘는 메인 제어 루틴 작성 완료.
-- **배포 설정**: `.github/workflows/check-reservation.yml` 작성 완료 (KST 오전 8시, 9시, 10시 자동 실행 크론 스케줄 설정).
+- **배포 설정**: `.github/workflows/check-reservation.yml` 작성 완료 (KST 오전 9:40 ~ 11:30 동안 10분 간격 자동 실행 크론 스케줄 설정).
 - **동작 검증**:
   - 로컬 환경에 더미 `.env` 환경 변수(더미 Pushover 키)를 적용한 뒤 `python src/main.py` 실행 완료.
   - 아산점의 12:00 이전 예약 완료 건인 `Carder (11:30)` 및 `귀로여관 (11:20)` 총 2건을 정확히 파싱하여 조기 예약으로 감지함을 확인했습니다.
@@ -44,13 +44,14 @@
   - 당일 가능한 가장 이른 첫 예약 시간(예: 11:20)보다 현재 시각이 이미 지난 시점이라면, 냔냐님이 이미 일반 출근(11:30)을 완료했거나 진행 중인 상태이므로 그 이후의 추가 알람은 무의미합니다. 따라서 즉시 브라우저를 닫고 프로그램을 중단하여 리소스를 아끼는 성능 최적화 로직을 반영했습니다.
 - **Pushover 설정 환경 변수 오버라이드 고도화**:
   - 알람 소리(`sound`), 재시도 간격(`retry`), 만료 시간(`expire`)의 기본값을 `src/notifier.py`에 내장하되, 사용자의 튜닝 선호도에 맞춰 `.env` 및 GitHub Secrets에서 해당 값을 덮어쓸 수 있도록 아키텍처를 개선했습니다. (테스트 상황에 대비하여 `.env`에 무음(`none`), 만료 5분(`300초`) 설정을 적용했습니다.)
-
+- **GitHub 저장소 코드 전송 완료**:
+  - 로컬 Git 리포지토리를 초기화하고 원격 저장소(`https://github.com/hashjamm/nyannya_molert.git`)를 연결하여 `main` 브랜치로 모든 기초 설계 코드 및 액션 워크플로우 전송을 완료했습니다. (기밀 정보 파일인 `.env`는 커밋 제외 보장)
 
 ---
 
 ## 4. 향후 할 일 리스트 (Future Work / TODOs)
-- [ ] **사용자의 Pushover 정보 세팅 및 로컬 2차 검증**:
-  - 사용자가 실제 발급받은 Pushover Token 및 User Key를 `.env`에 입력하고 로컬에서 정상적으로 사이렌이 울리는지 냔냐님 폰으로 수신 여부 확인.
+- [x] **사용자의 Pushover 정보 세팅 및 로컬 2차 검증**:
+  - 사용자가 실제 발급받은 Pushover Token 및 User Key를 `.env`에 입력하고 로컬에서 정상적으로 사이렌(또는 무음/진동)이 수신되는지 최종 확인 완료.
 - [ ] **GitHub Secrets 등록**:
   - GitHub Repository of Secrets 탭에 `PUSHOVER_API_TOKEN`과 `PUSHOVER_USER_KEY` 등록.
 - [ ] **GitHub Actions 동작성 최종 검증**:
