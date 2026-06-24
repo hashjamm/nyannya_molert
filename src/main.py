@@ -18,8 +18,8 @@ async def main():
     # 로컬 개발 시 .env 로드 (GitHub Actions 실행 시 런타임 환경변수 자동 적용)
     load_dotenv()
     
-    target_url = os.getenv("SHERLOCK_URL", "https://sherlock-holmes.co.kr/reservation/index.php?sido=12&bno=86#reservation")
-    limit_time = os.getenv("EARLY_THRESHOLD_LIMIT", "12:00")
+    target_url = os.getenv("SHERLOCK_URL") or "https://sherlock-holmes.co.kr/reservation/index.php?sido=12&bno=86#reservation"
+    limit_time = os.getenv("EARLY_THRESHOLD_LIMIT") or "12:00"
     
     logger.info(f"Starting Sherlock-Alarm check. URL: {target_url}, Threshold: {limit_time}")
     
