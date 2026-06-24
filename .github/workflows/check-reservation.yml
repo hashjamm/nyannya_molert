@@ -11,7 +11,7 @@ on:
   workflow_dispatch: # GitHub 웹 UI에서 수동 실행 버튼 활성화
     inputs:
       limit_time:
-        description: '테스트용 임계 시간 입력 (형식: HH:MM, 예: 16:00)'
+        description: '테스트용 임계 시각 (형식: HH:MM, 예: 16:00). 평소에는 비워두면 기본 12:00이 적용되며, 12:00보다 늦은 시각을 입력할 경우 조기 종료 필터를 우회하여 실시간 오후 알람 테스트가 가능합니다.'
         required: false
         default: ''
 

@@ -75,7 +75,8 @@ async def scrape_completed_early_reservations(target_url: str, limit_time_str: s
                     logger.info(f"Earliest possible reservation time on page: {earliest_time.strftime('%H:%M')}")
                     
                     # 가장 이른 첫 예약 시간보다 현재 시각이 지났다면 탐색 및 감시 무의미하므로 즉시 조기 종료
-                    if current_time >= earliest_time:
+                    # 단, 12:00보다 늦은 시간으로 수동 테스트할 때는 조기 종료를 우회하도록 합니다.
+                    if limit_time <= datetime.strptime("12:00", "%H:%M").time() and current_time >= earliest_time:
                         logger.info("Current time has passed the earliest reservation time. Aborting search.")
                         await browser.close()
                         return []
