@@ -47,15 +47,24 @@
 - **GitHub 저장소 코드 전송 완료**:
   - 로컬 Git 리포지토리를 초기화하고 원격 저장소(`https://github.com/hashjamm/nyannya_molert.git`)를 연결하여 `main` 브랜치로 모든 기초 설계 코드 및 액션 워크플로우 전송을 완료했습니다. (기밀 정보 파일인 `.env`는 커밋 제외 보장)
 
+### 2026-06-24
+- **알람 만료 중복 방지 가이드라인 반영**:
+  - `project-context.md`, `.env`, `.env.example`, `src/notifier.py` 파일 전반에 Pushover 긴급 알람 만료 시간(`PUSHOVER_EXPIRE`) 제약 사유(스케줄링 주기 10분보다 짧게 가져가 중복 울림 방지)를 상세 주석과 문서 내용으로 보강 완료했습니다.
+- **GitHub Secrets 미등록 시 에러 방어(이중 안전장치) 적용**:
+  - `SHERLOCK_URL` 및 `EARLY_THRESHOLD_LIMIT`가 GitHub Secrets에 등록되지 않았을 경우, 워크플로우상에서 빈 문자열(`""`)이 환경변수로 주입되어 파싱 에러(time data '' does not match format)가 발생하던 문제를 해결했습니다.
+  - Python 코드 내부에서 `or` 연산자를 활용해 빈 문자열 주입 시 기본값으로 우회하도록 방어막을 구축했고, `check-reservation.yml` 워크플로우에서도 기본값을 폴백(`||`)으로 주도록 수정했습니다.
+- **수동 실행 테스트 편의성 개선 (입력창 생성)**:
+  - 현재 시각이 12:00 이후일 때도 동작 및 알림 전송을 수동으로 테스트해 볼 수 있도록, 깃허브 웹에서 `workflow_dispatch`로 실행 시 임의의 임계 시간(예: `16:00`)을 직접 타이핑하여 실행할 수 있는 `limit_time` 입력 오버라이드 옵션을 구현 및 반영했습니다.
+
 ---
 
 ## 4. 향후 할 일 리스트 (Future Work / TODOs)
 - [x] **사용자의 Pushover 정보 세팅 및 로컬 2차 검증**:
   - 사용자가 실제 발급받은 Pushover Token 및 User Key를 `.env`에 입력하고 로컬에서 정상적으로 사이렌(또는 무음/진동)이 수신되는지 최종 확인 완료.
-- [ ] **GitHub Secrets 등록**:
-  - GitHub Repository of Secrets 탭에 `PUSHOVER_API_TOKEN`과 `PUSHOVER_USER_KEY` 등록.
-- [ ] **GitHub Actions 동작성 최종 검증**:
-  - 저장소를 GitHub에 업로드 후, Actions 탭에서 수동 실행(workflow_dispatch)을 통해 가상 환경상에서도 크롤링 및 실물 폰 알람 수신이 완벽하게 이루어지는지 교차 검증.
+- [x] **GitHub Secrets 등록**:
+  - GitHub Repository of Secrets 탭에 `PUSHOVER_API_TOKEN`과 `PUSHOVER_USER_KEY` 등록 완료.
+- [/] **GitHub Actions 동작성 최종 검증**:
+  - 저장소를 GitHub에 업로드 후, Actions 탭에서 수동 실행(workflow_dispatch)을 통해 가상 환경상에서도 크롤링 및 실물 폰 알람 수신이 완벽하게 이루어지는지 교차 검증 (진행 중 - 수동 오버라이드 기능으로 검증 예정).
 - [ ] **[대기] 대안 B (상시 대기 폴링 서버 구축)**:
   - 냔냐님의 10분 전 긴급 임박 예약 이슈 대응이 실 서비스 운영 중 필요하다고 판단될 경우, AWS/Oracle 무료 서버를 임대하여 3분 주기 상시 감시 루프 서버 배포 추진.
 
