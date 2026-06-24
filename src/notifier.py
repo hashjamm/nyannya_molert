@@ -19,6 +19,10 @@ def send_emergency_alarm(message: str) -> bool:
     # 개인 선호도에 따른 알람 세부 설정을 .env에서 읽고 오버라이드 (기본값 제공)
     sound = os.getenv("PUSHOVER_SOUND", "siren")
     retry = int(os.getenv("PUSHOVER_RETRY", "60"))
+    # [중요] 사용자가 알림을 확인하지 않아 알람이 지속되는 시간이 감시 주기(10분)보다 길 경우, 
+    # 다음 주기(10분 후) 감시 실행 시 새로운 긴급 알람이 발생하여 알람이 중복으로 겹쳐 울릴 수 있습니다.
+    # 이를 원천 방지하기 위해 PUSHOVER_EXPIRE 설정값은 반드시 감시 주기(10분 = 600초)보다 
+    # 짧은 값(예: 300초 = 5분)으로 유지해야 합니다.
     expire = int(os.getenv("PUSHOVER_EXPIRE", "3600"))
     
     url = "https://api.pushover.net/1/messages.json"
