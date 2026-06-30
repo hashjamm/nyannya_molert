@@ -23,7 +23,9 @@ def send_emergency_alarm(message: str) -> bool:
         return False
         
     # 개인 선호도에 따른 알람 세부 설정을 .env에서 읽고 오버라이드 (기본값 제공)
-    sound = os.getenv("PUSHOVER_SOUND", "siren")
+    sound_raw = os.getenv("PUSHOVER_SOUND", "siren")
+    sounds = [s.strip() for s in sound_raw.split(",") if s.strip()]
+    
     retry = int(os.getenv("PUSHOVER_RETRY", "60"))
     # [중요] 사용자가 알림을 확인하지 않아 알람이 지속되는 시간이 감시 주기(10분)보다 길 경우, 
     # 다음 주기(10분 후) 감시 실행 시 새로운 긴급 알람이 발생하여 알람이 중복으로 겹쳐 울릴 수 있습니다.
@@ -34,7 +36,15 @@ def send_emergency_alarm(message: str) -> bool:
     url = "https://api.pushover.net/1/messages.json"
     
     all_success = True
-    for u_key in user_keys:
+    for i, u_key in enumerate(user_keys):
+        # 유저 인덱스에 맞는 사운드 지정 (없으면 첫 번째 지정 사운드, 그것도 없으면 "siren")
+        if i < len(sounds):
+            user_sound = sounds[i]
+        elif sounds:
+            user_sound = sounds[0]
+        else:
+            user_sound = "siren"
+            
         payload = {
             "token": token,
             "user": u_key,
@@ -43,15 +53,15 @@ def send_emergency_alarm(message: str) -> bool:
             "priority": 2,
             "retry": retry,
             "expire": expire,
-            "sound": sound
+            "sound": user_sound
         }
         
         try:
             response = requests.post(url, data=payload, timeout=10)
             response.raise_for_status()
-            logger.info(f"Emergency alarm successfully sent to Pushover user: {u_key[:6]}...")
+            logger.info(f"Emergency alarm ({user_sound}) successfully sent to Pushover user: {u_key[:6]}...")
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to send Pushover alarm to user {u_key[:6]}...: {e}")
+            logger.error(f"Failed to send Pushover alarm ({user_sound}) to user {u_key[:6]}...: {e}")
             if e.response is not None:
                 logger.error(f"Response details: {e.response.text}")
             all_success = False
