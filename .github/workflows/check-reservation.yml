@@ -1,13 +1,8 @@
 name: Check Sherlock Holmes Reservation
 
 on:
-  schedule:
-    # KST 월,화,수 오전 9:40 ~ 9:50 (10분 간격) -> UTC: 당일 0시 (40, 50분)
-    - cron: '40,50 0 * * 1,2,3'
-    # KST 월,화,수 오전 10:00 ~ 10:50 (10분 간격) -> UTC: 당일 1시 (10분 간격)
-    - cron: '*/10 1 * * 1,2,3'
-    # KST 월,화,수 오전 11:00 ~ 11:30 (10분 간격) -> UTC: 당일 2시 (0, 10, 20, 30분)
-    - cron: '0,10,20,30 2 * * 1,2,3'
+  repository_dispatch:
+    types: [check_reservation_trigger]
   workflow_dispatch: # GitHub 웹 UI에서 수동 실행 버튼 활성화
     inputs:
       limit_time:

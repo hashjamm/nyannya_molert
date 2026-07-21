@@ -72,6 +72,11 @@
 - **로컬 설정 기본값 변경**:
   - `.env` 파일의 `PUSHOVER_SOUND`를 `vibrate,maple`로 변경하여 사용자님과 냔냐님에게 각각 알맞은 사운드가 매핑되도록 업데이트했습니다.
 
+### 2026-07-21
+- **외부 크론 스케줄러 연동을 위한 트리거 전환**:
+  - GitHub Actions 자체 크론의 극심한 지연 문제(3~4시간 지연)를 극복하기 위해 `.github/workflows/check-reservation.yml` 파일에서 `schedule` 트리거를 제거하고 `repository_dispatch` 트리거(`check_reservation_trigger`)로 전면 전환했습니다.
+  - 외부 정밀 스케줄링 서비스(예: cron-job.org)가 API로 트리거를 호출하도록 아키텍처를 개편했습니다.
+
 ---
 
 ## 4. 향후 할 일 리스트 (Future Work / TODOs)
@@ -81,8 +86,8 @@
   - GitHub Repository of Secrets 탭에 `PUSHOVER_API_TOKEN`과 `PUSHOVER_USER_KEY` 등록 완료.
 - [x] **유저별 개별 사운드 매핑 구현**:
   - 사용자별로 수신할 사운드를 개별 매핑(`vibrate,maple`)하는 로직 구현 및 반영 완료.
-- [/] **GitHub Actions 동작성 최종 검증**:
-  - 저장소를 GitHub에 업로드 후, Actions 탭에서 수동 실행(workflow_dispatch)을 통해 가상 환경상에서도 크롤링 및 실물 폰 알람 수신이 완벽하게 이루어지는지 교차 검증 (진행 중 - 수동 오버라이드 기능으로 검증 예정).
+- [/] **GitHub Actions 외부 크론 연동 및 최종 검증**:
+  - 외부 크론 서비스(cron-job.org 등)와 GitHub `repository_dispatch` API를 연동하여 예정된 아침 시간에 지연 없이 동작 및 실물 폰 알람 수신이 완벽히 이루어지는지 검증 (진행 중).
 - [ ] **[대기] 대안 B (상시 대기 폴링 서버 구축)**:
   - 냔냐님의 10분 전 긴급 임박 예약 이슈 대응이 실 서비스 운영 중 필요하다고 판단될 경우, AWS/Oracle 무료 서버를 임대하여 3분 주기 상시 감시 루프 서버 배포 추진.
 
