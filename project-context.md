@@ -80,6 +80,19 @@
   - 외부 크론 서비스에서 `POST https://api.github.com/repos/hashjamm/nyannya_molert/dispatches`를 호출할 수 있도록 권한 토큰(GitHub PAT Classic, `repo` 권한)과 필수 헤더(`Content-Type: application/json` 포함) 설정을 마치고 연동을 완료했습니다.
   - `cron-job.org`에서 모의 실행(Test Run)을 진행하여 `204 No Content` 응답과 함께 GitHub Actions가 지연 없이 즉시 트리거됨을 확인했습니다.
 
+### 2026-07-22
+- **차세대 시스템 고도화 및 아키텍처 재설계 수립**:
+  - **아침 비상 알람 Smart Silence 수립**: Pushover Receipt Verification API(`acknowledged` 상태) 연동을 통해, 냔냐님이 알람 확인(Ack)을 누른 경우 당일 11:30까지 반복되는 2차 아침 알람을 자동 스킵하는 매커니즘 정립.
+  - **근무 시간대 예약 변동 알림(Diff Engine) 수립**: 11:30~21:00 시간대로 감시를 확장하여, 직전 크롤링 데이터와의 비교를 통해 신규 예약/취소 예약 발생 시 Pushover `priority=0`(진동 알림)으로 전달하는 로직 정립.
+  - **경량 상태 저장소(Upstash Redis / Supabase) 도입 결정**: 예약 diffing 및 당일 알람 receipt 확인 상태 저장을 위한 REST API 기반 경량 DB 도입 수립.
+  - **동적 스케줄 제어 및 확장성 기획**: 네이티브 앱 개발 없이 Pushover 인프라를 유지하되, 향후 텔레그램/카카오톡 봇 또는 모바일 웹 제어판(PWA)으로 출근 시간/요일을 간편 설정하는 2단계 확장 로드맵 수립.
+- **모듈 구현 및 검증 완료**:
+  - `src/config.py`: 요일별 출근 시간(월/화/수 모두 오전 11:30) 및 퇴근 시간(월 16:00, 화/수 18:00) 설정 반영 및 환경변수 파싱 모듈 구현 완료.
+  - `src/db.py`: Upstash Redis REST API 24시간 TTL 연동 및 Pushover Receipt Verification API 연동 모듈 구현 완료.
+  - `src/notifier.py`: `send_emergency_alarm` receipt 반환 및 근무 시간대 신규/취소 진동 알림 `send_light_alarm` 구현 완료.
+  - `src/scraper.py`: 근무 시간대 전체 테마 예약 파싱 `scrape_all_completed_reservations` 추가 구현 완료.
+  - `src/main.py`: KST 시각 기준 오전 긴급 모드(Smart Silence) 및 근무 중 예약 변동(Diff Engine) 통합 제어 루틴 완성 및 로컬 검증 완료.
+
 ---
 
 ## 4. 향후 할 일 리스트 (Future Work / TODOs)
@@ -91,8 +104,19 @@
   - 사용자별로 수신할 사운드를 개별 매핑(`vibrate,maple`)하는 로직 구현 및 반영 완료.
 - [x] **GitHub Actions 외부 크론 연동 및 최종 검증**:
   - 외부 크론 서비스(cron-job.org 등)와 GitHub `repository_dispatch` API를 연동하여 예정된 아침 시간에 지연 없이 동작 및 실물 폰 알람 수신이 완벽히 이루어지는지 검증 완료.
+- [x] **[1단계] 경량 DB (Upstash Redis / Supabase) 구축 및 상태 연동**:
+  - 당일 예약 테이블 저장(Diffing용) 및 아침 알람 Receipt ID 저장을 위한 REST API 기반 DB 연동 모듈(`src/db.py`) 개발 완료.
+- [x] **[2단계] Pushover Receipt API 기반 아침 비상 알람 Smart Silence 구현**:
+  - 냔냐님이 Pushover 알람 확인(Ack) 누름 상태 감지 시 당일 출근 전까지 2차 비상 알람 자동 차단 처리 연동 완료.
+- [x] **[3단계] 근무 시간대 Reservation Diff 감지 및 진동 알림 구현**:
+  - 근무 시간대 전체 예약 파싱 및 신규 예약/예약 취소 발생 시 Pushover Priority 0(진동) 알림(`send_light_alarm`) 발송 로직 완비.
+- [ ] **[4단계] 동적 스케줄 제어 봇/웹 제어판 도입**:
+  - 텔레그램 봇 또는 웹 UI를 통해 출근 요일/시간을 코딩 없이 손쉽게 커스텀.
 - [ ] **[대기] 대안 B (상시 대기 폴링 서버 구축)**:
   - 냔냐님의 10분 전 긴급 임박 예약 이슈 대응이 실 서비스 운영 중 필요하다고 판단될 경우, AWS/Oracle 무료 서버를 임대하여 3분 주기 상시 감시 루프 서버 배포 추진.
+- [ ] **[장기 비전] 방탈출 알바생/매니저 전용 B2B 실시간 알림 SaaS 구축**:
+  - **배경**: 대다수 방탈출 브랜드(셜록홈즈, 넥스트에디션, 비트포비아, 키에스케이프 등) 예약 웹사이트가 소비자 결제 중심이어서, 현장 직원들이 manual 새로고침으로 업무/출근을 파악하는 고질적 페인포인트 존재.
+  - **전략**: 본사에 단순 아이디어 제안 시 탈취 위험이 있으므로, 아산점 냔냐님 실사용으로 효과(출근 스트레스 90% 감소 등)를 먼저 입증 -> 이후 타 브랜드/지점 타깃의 월 구독형 B2B SaaS(직원 알리미) 구축 -> 검증된 가치로 본사 인수/B2B 제휴 추진.
 
 ---
 
