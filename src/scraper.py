@@ -121,13 +121,17 @@ async def scrape_all_completed_reservations(target_url: str) -> list:
     """
     all_completed = []
 
+    KST = timezone(timedelta(hours=9))
+    now_kst = datetime.now(KST)
+    current_time = now_kst.time()
+
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
                 
-                logger.info(f"Connecting to {target_url} for full reservation scan (Attempt {attempt}/{MAX_RETRIES})...")
+                logger.info(f"Connecting to {target_url} for future reservation scan after {current_time.strftime('%H:%M')} (Attempt {attempt}/{MAX_RETRIES})...")
                 await page.goto(target_url, wait_until="networkidle", timeout=30000)
                 await page.wait_for_selector(RESERVATION_CONTAINER, timeout=15000)
                 await page.wait_for_timeout(2000)
@@ -144,14 +148,17 @@ async def scrape_all_completed_reservations(target_url: str) -> list:
                     for slot in completed_slots:
                         slot_text = (await slot.inner_text()).strip()
                         slot_time = parse_time(slot_text)
-                        if slot_time:
+                        
+                        # [오탐 방지] 이미 지나간 과거 시간 슬롯은 웹사이트 특성상 자동으로 '예약불가' 처리되므로,
+                        # 현재 시각 이후의 미래 슬롯만 수집하여 시간 경과에 따른 가짜 '신규 예약' 오탐을 원천 차단합니다.
+                        if slot_time and slot_time > current_time:
                             all_completed.append({
                                 "theme": theme_title,
                                 "time": slot_time.strftime("%H:%M")
                             })
                             
                 await browser.close()
-                logger.info(f"Scraped total {len(all_completed)} completed reservations across all themes.")
+                logger.info(f"Scraped total {len(all_completed)} future completed reservations across all themes.")
                 return all_completed
                 
         except Exception as e:

@@ -129,9 +129,10 @@ async def main():
             if prev_reservations:
                 prev_set = {(r["theme"], r["time"]) for r in prev_reservations}
                 curr_set = {(r["theme"], r["time"]) for r in current_reservations}
-                
-                new_items = curr_set - prev_set
-                canceled_items = prev_set - curr_set
+
+                # 현재 시각 이후의 미래 예약 항목만 필터링 (시간 경과에 따른 과거 슬롯의 자동 마감/소멸을 신규/취소로 오탐 방지)
+                new_items = {item for item in (curr_set - prev_set) if item[1] > current_time_str}
+                canceled_items = {item for item in (prev_set - curr_set) if item[1] > current_time_str}
                 
                 if new_items:
                     logger.warning(f"Detected {len(new_items)} NEW reservations!")
