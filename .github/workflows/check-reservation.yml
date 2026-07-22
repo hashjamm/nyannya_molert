@@ -39,8 +39,10 @@ jobs:
         SHERLOCK_URL: ${{ secrets.SHERLOCK_URL || 'https://sherlock-holmes.co.kr/reservation/index.php?sido=12&bno=86#reservation' }}
         PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
         PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
-        EARLY_THRESHOLD_LIMIT: ${{ github.event.inputs.limit_time || secrets.EARLY_THRESHOLD_LIMIT || '12:00' }}
+        EARLY_THRESHOLD_LIMIT: ${{ github.event.inputs.limit_time || secrets.EARLY_THRESHOLD_LIMIT }}
         PUSHOVER_SOUND: ${{ secrets.PUSHOVER_SOUND }}
         PUSHOVER_EXPIRE: ${{ secrets.PUSHOVER_EXPIRE }}
+        UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+        UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
       run: |
         python src/main.py

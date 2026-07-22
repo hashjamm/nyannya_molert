@@ -86,12 +86,12 @@
   - **근무 시간대 예약 변동 알림(Diff Engine) 수립**: 11:30~21:00 시간대로 감시를 확장하여, 직전 크롤링 데이터와의 비교를 통해 신규 예약/취소 예약 발생 시 Pushover `priority=0`(진동 알림)으로 전달하는 로직 정립.
   - **경량 상태 저장소(Upstash Redis / Supabase) 도입 결정**: 예약 diffing 및 당일 알람 receipt 확인 상태 저장을 위한 REST API 기반 경량 DB 도입 수립.
   - **동적 스케줄 제어 및 확장성 기획**: 네이티브 앱 개발 없이 Pushover 인프라를 유지하되, 향후 텔레그램/카카오톡 봇 또는 모바일 웹 제어판(PWA)으로 출근 시간/요일을 간편 설정하는 2단계 확장 로드맵 수립.
-- **모듈 구현 및 검증 완료**:
-  - `src/config.py`: 요일별 출근 시간(월/화/수 모두 오전 11:30) 및 퇴근 시간(월 16:00, 화/수 18:00) 설정 반영 및 환경변수 파싱 모듈 구현 완료.
-  - `src/db.py`: Upstash Redis REST API 24시간 TTL 연동 및 Pushover Receipt Verification API 연동 모듈 구현 완료.
-  - `src/notifier.py`: `send_emergency_alarm` receipt 반환 및 근무 시간대 신규/취소 진동 알림 `send_light_alarm` 구현 완료.
-  - `src/scraper.py`: 근무 시간대 전체 테마 예약 파싱 `scrape_all_completed_reservations` 추가 구현 완료.
-  - `src/main.py`: KST 시각 기준 오전 긴급 모드(Smart Silence) 및 근무 중 예약 변동(Diff Engine) 통합 제어 루틴 완성 및 로컬 검증 완료.
+- **실환경 배포 및 운영 설정 완료**:
+  - **Upstash Redis DB 구축 & 자격 증명 등록**: Upstash 무료 데이터베이스(`nyannya-db`) 생성 및 GitHub Secrets(`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`) 등록 완료.
+  - **소스코드 커밋 및 원격 저장소 푸시 완료**: 차세대 모듈 코드(`src/config.py`, `src/db.py`, `src/main.py` 등) Git `main` 브랜치에 배포 완료.
+  - **외부 크론 스케줄링 확장 수립**: `cron-job.org`에 Crontab 표현식(`*/10 9-18 * * 1-3`, KST 09:40~18:00 월/화/수) 적용 완료하여 오전 긴급 감시 및 근무 중 실시간 예약 변동(Diffing) 감시 자동 구동 체계 완성.
+  - **근무 시간대 예약 소멸 오탐 방지 보완**: 시간 경과에 따른 과거 예약 슬롯 자동 마감 현상을 '신규/취소'로 오탐하지 않도록 `slot_time > current_time` 미래 슬롯 전용 필터링 로직(`src/scraper.py`, `src/main.py`) 적용 완료.
+  - **GitHub Actions 워크플로우 환경변수 누락 수정**: `.github/workflows/check-reservation.yml`에 `UPSTASH_REDIS_REST_URL` 및 `UPSTASH_REDIS_REST_TOKEN` 환경변수 주입을 추가하여 서버리스 런타임에서 DB 연동 및 Diff 알림이 온전히 구동되도록 수정 완료.
 
 ---
 
