@@ -81,7 +81,7 @@ async def main():
         return
 
     # =========================================================================
-    # MODE 1: 오전 긴급 모드 (현재 시각 < 출근 시각 11:30)
+    # MODE 1: 오전 긴급 모드 (현재 시각 < 출근 시각 11:20)
     # =========================================================================
     if current_time_obj < start_time_obj:
         logger.info(f"Running [MORNING EMERGENCY MODE] (Current: {current_time_str} < Shift Start: {start_time_str})")
@@ -138,8 +138,9 @@ async def main():
             logger.critical(f"Error during Morning Emergency Mode execution: {e}")
 
     # =========================================================================
-    # MODE 2: 근무 중 실시간 예약 변동 모드 (출근 시각 11:30 <= 현재 시각 <= 퇴근 시각)
+    # MODE 2: 근무 중 실시간 예약 변동 모드 (출근 시각 11:20 <= 현재 시각 <= 퇴근 시각)
     # =========================================================================
+
     else:
         logger.info(f"Running [DAYTIME WORK MODE] (Shift Start: {start_time_str} <= Current: {current_time_str} <= End: {end_time_str})")
         

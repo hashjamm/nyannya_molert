@@ -14,16 +14,16 @@ DEFAULT_EARLY_THRESHOLD_LIMIT = "12:00"  # 조기 예약 감지 상한 시각 (K
 DEFAULT_PUSHOVER_RETRY = 60              # 비상 알람 재시도 간격 (초)
 DEFAULT_PUSHOVER_EXPIRE = 300            # 비상 알람 만료 시간 (초)
 
-# 요일별 근무 스케줄 (모두 11:30 출근, 퇴근시간은 요일별로 상이)
+# 요일별 근무 스케줄 (모두 11:20 출근, 퇴근시간은 요일별로 상이)
 # 0: 월요일, 1: 화요일, 2: 수요일, 3: 목요일, 4: 금요일, 5: 토요일, 6: 일요일
 DEFAULT_SHIFT_SCHEDULE = {
-    0: {"start_time": "11:30", "end_time": "16:00", "enabled": True},  # 월요일: 11:30 출근 ~ 16:00 퇴근
-    1: {"start_time": "11:30", "end_time": "18:00", "enabled": True},  # 화요일: 11:30 출근 ~ 18:00 퇴근
-    2: {"start_time": "11:30", "end_time": "18:00", "enabled": True},  # 수요일: 11:30 출근 ~ 18:00 퇴근
-    3: {"start_time": "11:30", "end_time": "18:00", "enabled": False}, # 목요일 휴무
-    4: {"start_time": "11:30", "end_time": "18:00", "enabled": False}, # 금요일 휴무
-    5: {"start_time": "11:30", "end_time": "18:00", "enabled": False}, # 토요일 휴무
-    6: {"start_time": "11:30", "end_time": "18:00", "enabled": False}, # 일요일 휴무
+    0: {"start_time": "11:20", "end_time": "16:00", "enabled": True},  # 월요일: 11:20 출근 ~ 16:00 퇴근
+    1: {"start_time": "11:20", "end_time": "18:00", "enabled": True},  # 화요일: 11:20 출근 ~ 18:00 퇴근
+    2: {"start_time": "11:20", "end_time": "18:00", "enabled": True},  # 수요일: 11:20 출근 ~ 18:00 퇴근
+    3: {"start_time": "11:20", "end_time": "18:00", "enabled": False}, # 목요일 휴무
+    4: {"start_time": "11:20", "end_time": "18:00", "enabled": False}, # 금요일 휴무
+    5: {"start_time": "11:20", "end_time": "18:00", "enabled": False}, # 토요일 휴무
+    6: {"start_time": "11:20", "end_time": "18:00", "enabled": False}, # 일요일 휴무
 }
 
 def get_monitor_start_time() -> str:
@@ -76,10 +76,10 @@ def get_today_shift_info(target_dt: datetime = None) -> tuple[bool, str, str, in
     weekday = target_dt.weekday()
     schedule = load_shift_schedule()
 
-    shift_info = schedule.get(weekday, {"start_time": "11:30", "end_time": "18:00", "enabled": False})
+    shift_info = schedule.get(weekday, {"start_time": "11:20", "end_time": "18:00", "enabled": False})
     
     override_limit = os.getenv("EARLY_THRESHOLD_LIMIT")
-    start_time_str = override_limit if override_limit else shift_info.get("start_time", "11:30")
+    start_time_str = override_limit if override_limit else shift_info.get("start_time", "11:20")
     end_time_str = shift_info.get("end_time", "18:00")
     is_shift_day = shift_info.get("enabled", False)
 
@@ -87,3 +87,4 @@ def get_today_shift_info(target_dt: datetime = None) -> tuple[bool, str, str, in
         is_shift_day = True
 
     return is_shift_day, start_time_str, end_time_str, weekday
+
