@@ -88,16 +88,22 @@ async def main():
         
         # 1. DB에서 오늘 아침 알람 발송 및 확인(Ack) 여부 검증 (Smart Silence)
         alarm_state = get_morning_alarm_state(today_str)
-        if alarm_state and alarm_state.get("receipt"):
-            receipt_id = alarm_state["receipt"]
-            logger.info(f"Found existing morning alarm receipt: {receipt_id}")
-            
-            is_acked = check_pushover_ack(receipt_id, pushover_token)
-            if is_acked:
-                logger.info("✨ User has ACKNOWLEDGED today's morning alarm. Smart Silence active -> Skipping 2nd alarm.")
-                return
-            else:
-                logger.info("Morning alarm was sent earlier, but user has not acknowledged it yet.")
+        emergency_token = get_pushover_token_for_type("emergency")
+
+        if alarm_state:
+            receipts = alarm_state.get("receipts") or alarm_state.get("receipt")
+            if isinstance(receipts, str):
+                receipts = [receipts]
+
+            if receipts:
+                logger.info(f"Found {len(receipts)} existing morning alarm receipts: {receipts}")
+                is_acked = any(check_pushover_ack(r, emergency_token) for r in receipts)
+
+                if is_acked:
+                    logger.info("✨ User/NyanNya has ACKNOWLEDGED today's morning alarm. Smart Silence active -> Skipping 2nd alarm.")
+                    return
+                else:
+                    logger.info("Morning alarm was sent earlier, but no user has acknowledged it yet.")
 
         # 2. 크롤링 진행 및 조기 예약 완료 건 감지
         try:
@@ -106,7 +112,6 @@ async def main():
             
             if early_reservations:
                 logger.warning(f"Detected {len(early_reservations)} early reservations before {early_limit_str}.")
-
                 
                 msg_lines = [
                     "🚨 조기 출근 예약 알람 🚨",
@@ -120,12 +125,12 @@ async def main():
                     
                 alarm_message = "\n".join(msg_lines)
                 
-                success, receipt_id = send_emergency_alarm(alarm_message, alarm_type="emergency")
+                success, receipts = send_emergency_alarm(alarm_message, alarm_type="emergency")
                 if success:
                     logger.info("Emergency alarm sent successfully.")
-                    if receipt_id:
+                    if receipts:
                         save_morning_alarm_state(today_str, {
-                            "receipt": receipt_id,
+                            "receipts": receipts,
                             "sent_at": current_time_str,
                             "count": (alarm_state.get("count", 0) + 1) if alarm_state else 1
                         })
@@ -133,6 +138,7 @@ async def main():
                     logger.error("Failed to send emergency alarm.")
             else:
                 logger.info("No early reservations detected before 12:00. Sleep well!")
+
                 
         except Exception as e:
             logger.critical(f"Error during Morning Emergency Mode execution: {e}")
