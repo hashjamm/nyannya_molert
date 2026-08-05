@@ -170,12 +170,27 @@ async def main():
                         msg_lines.append(f"❌ {theme} ({res_time})")
                     send_light_alarm("\n".join(msg_lines), sound="vibrate", title="❌ 예약 취소 발생")
                     
-                if not new_items and not canceled_items:
-                    logger.info("No reservation changes detected during work mode.")
             else:
-                logger.info("First reservation scan of the day in Work Mode. Initializing DB state without alerts.")
+                logger.info("First reservation scan of the day in Work Mode. Sending Daily Shift Briefing alert.")
+                upcoming_reservations = [r for r in current_reservations if r["time"] > current_time_str]
+                if upcoming_reservations:
+                    msg_lines = [
+                        "📋 [오늘의 출근 브리핑]",
+                        f"냔냐님! {current_time_str} 이후 오늘의 현재 예약 상황입니다 (총 {len(upcoming_reservations)}건):",
+                        ""
+                    ]
+                    for res in sorted(upcoming_reservations, key=lambda x: x["time"]):
+                        msg_lines.append(f"- {res['time']} | {res['theme']}")
+                else:
+                    msg_lines = [
+                        "📋 [오늘의 출근 브리핑]",
+                        f"냔냐님! {current_time_str} 이후 오늘의 현재 예약 건이 없습니다. 편안한 근무 되세요! ✨"
+                    ]
+                
+                send_light_alarm("\n".join(msg_lines), sound="vibrate", title="📋 [출근 브리핑] 현재 예약 상황")
 
             save_today_reservations(today_str, current_reservations)
+
 
         except Exception as e:
             logger.critical(f"Error during Daytime Work Mode execution: {e}")

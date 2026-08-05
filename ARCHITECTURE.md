@@ -141,9 +141,12 @@ sequenceDiagram
     Main->>DB: get_today_reservations(today_str)
     DB-->>Main: prev_reservations
 
-    alt First Scan of the Day
-        Note over Main: Initial scan -> Save current state to DB without alert
+    alt First Scan of the Day (11:20 KST)
+        Main->>Notifier: send_light_alarm(briefing_msg, sound="vibrate", priority=0)
+        Notifier->>Mobile: Send Push Notification (📋 Daily Shift Briefing)
+        Note over Main: Initial scan -> Send Briefing & Save base snapshot to DB
     else Previous Data Exists (Diff Calculation)
+
         Note over Main: Calculate (curr_set - prev_set) & (prev_set - curr_set)<br/>Filter future slots > current_time
         opt New Reservations Detected
             Main->>Notifier: send_light_alarm(new_items, sound="vibrate", priority=0)
