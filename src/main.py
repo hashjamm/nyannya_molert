@@ -52,7 +52,19 @@ async def main():
         second=0, microsecond=0
     ).time()
     
-    current_time_obj = now_kst.time()
+    morning_start_time_str = os.getenv("MONITOR_START_TIME", "09:40")
+    morning_start_time_obj = now_kst.replace(
+        hour=int(morning_start_time_str.split(":")[0]),
+        minute=int(morning_start_time_str.split(":")[1]),
+        second=0, microsecond=0
+    ).time()
+
+    # =========================================================================
+    # CASE 0: 오전 감시 시작 시각 이전 (현재 시각 < 09:40) -> 실행 중단
+    # =========================================================================
+    if current_time_obj < morning_start_time_obj:
+        logger.info(f"Current time ({current_time_str}) is before morning monitoring start time ({morning_start_time_str}). Skipping execution.")
+        return
 
     # =========================================================================
     # CASE 1: 퇴근 시각 이후 (현재 시각 > end_time) -> 실행 중단

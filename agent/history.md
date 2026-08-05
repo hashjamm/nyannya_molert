@@ -1,0 +1,81 @@
+# 🧊 Agent Cold Memory: Project History
+
+본 문서는 프로젝트의 전체 진행 히스토리 및 마일스톤 이력을 100% 무손실(Lossless)로 보존하는 차가운 데이터 아카이브(Cold Archive)입니다.
+
+---
+
+## 진행 히스토리 (Completed Work History)
+
+### 2026-06-23
+- **프로젝트 초기화**: `requirements.txt`, `.gitignore`, `.env.example` 생성 및 구성 완료.
+- **분석 스크립트 실행 및 지점 코드 추출**:
+  - 로컬 환경에 Playwright 및 Chromium 브라우저를 설치한 뒤, 셜록홈즈 사이트 드롭다운 옵션을 분석하여 아산점의 정확한 지점 파라미터(`sido=12`, `bno=86`)를 추출해 내어 `SHERLOCK_URL` 기본값으로 세팅했습니다.
+- **핵심 모듈 구현**:
+  - `src/notifier.py`: Pushover `priority=2`, `sound=siren`, `retry=60`, `expire=3600` API 연동 완료.
+  - `src/scraper.py`: Playwright 기반으로 15개 전체 테마를 수집한 후, 낮 12시 이전의 완료 타임(`.col.false`)을 추출하는 비동기 크롤러 구현 완료.
+  - `src/main.py`: 환경 변수를 반영하고 예약 감시 조건을 판단해 알림을 쏘는 메인 제어 루틴 작성 완료.
+- **배포 설정**: `.github/workflows/check-reservation.yml` 작성 완료 (KST 오전 9:40 ~ 11:30 동안 10분 간격 자동 실행 크론 스케줄 설정).
+- **동작 검증**:
+  - 로컬 환경에 더미 `.env` 환경 변수(더미 Pushover 키)를 적용한 뒤 `python src/main.py` 실행 완료.
+  - 아산점의 12:00 이전 예약 완료 건인 `Carder (11:30)` 및 `귀로여관 (11:20)` 총 2건을 정확히 파싱하여 조기 예약으로 감지함을 확인했습니다.
+- **오탐 방지 로직 보완**:
+  - 당일 시간이 흐름에 따라 과거 예약 슬롯이 자동으로 '예약불가' 처리되는 웹사이트 특성을 파악하여, 크롤링 시점의 한국 시간(KST) 기준 현재 시각보다 미래의 슬롯만 검증하는 필터링 로직을 `src/scraper.py`에 적용 완료했습니다. (GitHub Actions 서버 타임존인 UTC 환경에서도 온전히 작동하도록 timezone 처리 보완)
+- **탐색 조기 종료 최적화**:
+  - 당일 가능한 가장 이른 첫 예약 시간(예: 11:20)보다 현재 시각이 이미 지난 시점이라면, 냔냐님이 이미 일반 출근(11:30)을 완료했거나 진행 중인 상태이므로 그 이후의 추가 알람은 무의미합니다. 따라서 즉시 브라우저를 닫고 프로그램을 중단하여 리소스를 아끼는 성능 최적화 로직을 반영했습니다.
+- **Pushover 설정 환경 변수 오버라이드 고도화**:
+  - 알람 소리(`sound`), 재시도 간격(`retry`), 만료 시간(`expire`)의 기본값을 `src/notifier.py`에 내장하되, 사용자의 튜닝 선호도에 맞춰 `.env` 및 GitHub Secrets에서 해당 값을 덮어쓸 수 있도록 아키텍처를 개선했습니다. (테스트 상황에 대비하여 `.env`에 무음(`none`), 만료 5분(`300초`) 설정을 적용했습니다.)
+- **GitHub 저장소 코드 전송 완료**:
+  - 로컬 Git 리포지토리를 초기화하고 원격 저장소(`https://github.com/hashjamm/nyannya_molert.git`)를 연결하여 `main` 브랜치로 모든 기초 설계 코드 및 액션 워크플로우 전송을 완료했습니다. (기밀 정보 파일인 `.env`는 커밋 제외 보장)
+
+### 2026-06-24
+- **알람 만료 중복 방지 가이드라인 반영**:
+  - `project-context.md`, `.env`, `.env.example`, `src/notifier.py` 파일 전반에 Pushover 긴급 알람 만료 시간(`PUSHOVER_EXPIRE`) 제약 사유(스케줄링 주기 10분보다 짧게 가져가 중복 울림 방지)를 상세 주석과 문서 내용으로 보강 완료했습니다.
+- **GitHub Secrets 미등록 시 에러 방어(이중 안전장치) 적용**:
+  - `SHERLOCK_URL` 및 `EARLY_THRESHOLD_LIMIT`가 GitHub Secrets에 등록되지 않았을 경우, 워크플로우상에서 빈 문자열(`""`)이 환경변수로 주입되어 파싱 에러(time data '' does not match format)가 발생하던 문제를 해결했습니다.
+  - Python 코드 내부에서 `or` 연산자를 활용해 빈 문자열 주입 시 기본값으로 우회하도록 방어막을 구축했고, `check-reservation.yml` 워크플로우에서도 기본값을 폴백(`||`)으로 주도록 수정했습니다.
+- **수동 실행 테스트 편의성 개선 (입력창 생성 및 조기 종료 우회)**:
+  - 현재 시각이 12:00 이후일 때도 동작 및 알림 전송을 수동으로 테스트해 볼 수 있도록, 깃허브 웹에서 `workflow_dispatch`로 실행 시 임의의 임계 시간(예: `16:00`)을 직접 타이핑하여 실행할 수 있는 `limit_time` 입력 오버라이드 옵션을 구현 및 반영했습니다.
+  - 현재 시간이 가장 이른 첫 예약 시간(11:20)을 지났을 때 리소스를 아끼기 위해 적용했던 **조기 종료 최적화 로직**이 작동하더라도, 수동 테스트를 위해 `limit_time`을 12:00보다 늦게 입력한 경우에는 이 최적화 로직을 우회하여 정상 감시 및 알람이 작동하도록 예외 처리를 추가했습니다.
+- **다중 유저 동시 전송 기능 구현**:
+  - 냔냐님 폰으로도 동시에 비상 알람이 가도록 설정하기 위해, `src/notifier.py` 코드를 개선하여 `PUSHOVER_USER_KEY`에 콤마(`,`)로 구분된 다중 유저 키가 들어왔을 때 개별 루프를 돌며 각각 전송하도록 구현 완료했습니다.
+  - 기밀 정보 노출 방지를 위해 로그 기록 시 유저 키의 앞 6자리만 마스킹 노출되도록 처리했습니다.
+  - `.env` 및 `.env.example` 파일에도 콤마 구분 다중 키 입력이 가능함을 설명하는 안내 주석을 추가했습니다.
+- **근무 요일(월, 화, 수) 감시 제한 설정**:
+  - 냔냐님이 일하는 요일인 **매주 월요일, 화요일, 수요일**에만 자동 감시 스케줄러가 가동되도록 `.github/workflows/check-reservation.yml` 파일의 크론 설정을 `1,2,3`으로 제한해 반영 완료했습니다.
+  - 이 요일 필터링은 깃허브 크론 스케줄에만 걸려 있으므로, 깃허브 웹에서 수동으로 실행(`workflow_dispatch`)할 때는 목~일요일이라도 제한 없이 즉시 테스트 및 알람이 작동하도록 명시 및 설정했습니다.
+
+### 2026-06-30
+- **유저별 맞춤 알람 사운드 개별 지정 기능 구현**:
+  - `src/notifier.py` 코드를 보완하여, `PUSHOVER_SOUND` 환경 변수에 쉼표(`,`)로 여러 개의 사운드를 지정할 경우 `PUSHOVER_USER_KEY`에 등록된 순서(인덱스)대로 매핑하여 개별 사운드를 전송하도록 조치했습니다.
+  - 만약 사운드 설정 개수가 유저 수보다 부족한 경우, 리스트의 첫 번째 사운드로 폴백하며 아예 없을 경우 기본값 `siren`으로 안전하게 작동하도록 구현했습니다.
+  - 이를 통해 사용자님 휴대폰에는 `vibrate`(진동만 1회), 냔냐님 휴대폰에는 새로 업로드할 `maple`(헤네시스 BGM)이 울리도록 개별 설정이 가능해졌습니다.
+- **로컬 설정 기본값 변경**:
+  - `.env` 파일의 `PUSHOVER_SOUND`를 `vibrate,maple`로 변경하여 사용자님과 냔냐님에게 각각 알맞은 사운드가 매핑되도록 업데이트했습니다.
+
+### 2026-07-21
+- **외부 크론 스케줄러 연동을 위한 트리거 전환**:
+  - GitHub Actions 자체 크론의 극심한 지연 문제(3~4시간 지연)를 극복하기 위해 `.github/workflows/check-reservation.yml` 파일에서 `schedule` 트리거를 제거하고 `repository_dispatch` 트리거(`check_reservation_trigger`)로 전면 전환했습니다.
+  - 외부 정밀 스케줄링 서비스(예: cron-job.org)가 API로 트리거를 호출하도록 아키텍처를 개편했습니다.
+- **외부 크론 서비스(cron-job.org) 및 GitHub PAT 설정 완료**:
+  - 외부 크론 서비스에서 `POST https://api.github.com/repos/hashjamm/nyannya_molert/dispatches`를 호출할 수 있도록 권한 토큰(GitHub PAT Classic, `repo` 권한)과 필수 헤더(`Content-Type: application/json` 포함) 설정을 마치고 연동을 완료했습니다.
+  - `cron-job.org`에서 모의 실행(Test Run)을 진행하여 `204 No Content` 응답과 함께 GitHub Actions가 지연 없이 즉시 트리거됨을 확인했습니다.
+
+### 2026-07-22
+- **차세대 시스템 고도화 및 아키텍처 재설계 수립**:
+  - **아침 비상 알람 Smart Silence 수립**: Pushover Receipt Verification API(`acknowledged` 상태) 연동을 통해, 냔냐님이 알람 확인(Ack)을 누른 경우 당일 11:30까지 반복되는 2차 아침 알람을 자동 스킵하는 매커니즘 정립.
+  - **근무 시간대 예약 변동 알림(Diff Engine) 수립**: 11:30~21:00 시간대로 감시를 확장하여, 직전 크롤링 데이터와의 비교를 통해 신규 예약/취소 예약 발생 시 Pushover `priority=0`(진동 알림)으로 전달하는 로직 정립.
+  - **경량 상태 저장소(Upstash Redis / Supabase) 도입 결정**: 예약 diffing 및 당일 알람 receipt 확인 상태 저장을 위한 REST API 기반 경량 DB 도입 수립.
+  - **동적 스케줄 제어 및 확장성 기획**: 네이티브 앱 개발 없이 Pushover 인프라를 유지하되, 향후 텔레그램/카카오톡 봇 또는 모바일 웹 제어판(PWA)으로 출근 시간/요일을 간편 설정하는 2단계 확장 로드맵 수립.
+- **실환경 배포 및 운영 설정 완료**:
+  - **Upstash Redis DB 구축 & 자격 증명 등록**: Upstash 무료 데이터베이스(`nyannya-db`) 생성 및 GitHub Secrets(`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`) 등록 완료.
+  - **소스코드 커밋 및 원격 저장소 푸시 완료**: 차세대 모듈 코드(`src/config.py`, `src/db.py`, `src/main.py` 등) Git `main` 브랜치에 배포 완료.
+  - **외부 크론 스케줄링 확장 수립**: `cron-job.org`에 Crontab 표현식(`*/10 9-18 * * 1-3`, KST 09:40~18:00 월/화/수) 적용 완료하여 오전 긴급 감시 및 근무 중 실시간 예약 변동(Diffing) 감시 자동 구동 체계 완성.
+  - **근무 시간대 예약 소멸 오탐 방지 보완**: 시간 경과에 따른 과거 예약 슬롯 자동 마감 현상을 '신규/취소'로 오탐하지 않도록 `slot_time > current_time` 미래 슬롯 전용 필터링 로직(`src/scraper.py`, `src/main.py`) 적용 완료.
+  - **GitHub Actions 워크플로우 환경변수 누락 수정**: `.github/workflows/check-reservation.yml`에 `UPSTASH_REDIS_REST_URL` 및 `UPSTASH_REDIS_REST_TOKEN` 환경변수 주입을 추가하여 서버리스 런타임에서 DB 연동 및 Diff 알림이 온전히 구동되도록 수정 완료.
+
+### 2026-08-05
+- **오전 감시 시작 시각 필터링(09:40 KST) 보완**:
+  - `cron-job.org` 크론 스케줄러가 09:00부터 10분 간격으로 호출할 때, 09:40 이전(09:00~09:30)에 실행되는 경우 파이썬 코드 레벨에서 감시를 스킵하고 즉시 자동 종료되도록 `src/main.py`에 시작 시각 필터(`MONITOR_START_TIME` 기본값 `09:40`) 적용 완료.
+  - 외부 크론 스케줄러 수정 없이 파이썬 코드 레벨에서 09:40 이전 실행 건 및 퇴근 시간(18:00) 이후 실행 건을 완벽하게 걸러내도록 가드레일 확립.
+  - `.env.example`에 `MONITOR_START_TIME` 환경 변수 명세 추가.
+
