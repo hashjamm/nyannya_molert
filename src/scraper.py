@@ -4,6 +4,8 @@ import logging
 from datetime import datetime, timezone, timedelta
 from playwright.async_api import async_playwright
 
+from config import get_early_threshold_limit
+
 logger = logging.getLogger(__name__)
 
 # CSS Selectors
@@ -27,12 +29,16 @@ def parse_time(time_str: str):
         return datetime.strptime(f"{hour:02d}:{minute:02d}", "%H:%M").time()
     return None
 
-async def scrape_completed_early_reservations(target_url: str, limit_time_str: str = "12:00") -> list:
+async def scrape_completed_early_reservations(target_url: str, limit_time_str: str = None) -> list:
     """
     Playwright를 사용하여 셜록홈즈 예약 페이지를 크롤링하고,
     지정된 한계 시간 이전의 '예약 완료(불가)' 건을 감지하여 반환합니다.
     """
+    if not limit_time_str:
+        limit_time_str = get_early_threshold_limit()
+
     limit_time = datetime.strptime(limit_time_str, "%H:%M").time()
+
     detected_reservations = []
 
     KST = timezone(timedelta(hours=9))

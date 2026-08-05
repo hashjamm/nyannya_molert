@@ -2,6 +2,8 @@ import os
 import requests
 import logging
 
+from config import get_pushover_retry_expire
+
 logger = logging.getLogger(__name__)
 
 def send_emergency_alarm(message: str) -> tuple[bool, str | None]:
@@ -24,10 +26,10 @@ def send_emergency_alarm(message: str) -> tuple[bool, str | None]:
     sound_raw = os.getenv("PUSHOVER_SOUND", "siren")
     sounds = [s.strip() for s in sound_raw.split(",") if s.strip()]
     
-    retry = int(os.getenv("PUSHOVER_RETRY", "60"))
-    expire = int(os.getenv("PUSHOVER_EXPIRE", "300"))
+    retry, expire = get_pushover_retry_expire()
     
     url = "https://api.pushover.net/1/messages.json"
+
     
     all_success = True
     first_receipt = None

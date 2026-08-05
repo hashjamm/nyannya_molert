@@ -77,5 +77,7 @@
 - **오전 감시 시작 시각 필터링(09:40 KST) 보완**:
   - `cron-job.org` 크론 스케줄러가 09:00부터 10분 간격으로 호출할 때, 09:40 이전(09:00~09:30)에 실행되는 경우 파이썬 코드 레벨에서 감시를 스킵하고 즉시 자동 종료되도록 `src/main.py`에 시작 시각 필터(`MONITOR_START_TIME` 기본값 `09:40`) 적용 완료.
   - 외부 크론 스케줄러 수정 없이 파이썬 코드 레벨에서 09:40 이전 실행 건 및 퇴근 시간(18:00) 이후 실행 건을 완벽하게 걸러내도록 가드레일 확립.
-  - `.env.example`에 `MONITOR_START_TIME` 환경 변수 명세 추가.
+  - **시간 설정 및 환경변수 단일 모듈화(Single Source of Truth) 개편**:
+    - `src/main.py`, `src/scraper.py`, `src/notifier.py`에 흩어져 있던 시간 설정 기본값(`MONITOR_START_TIME="09:40"`, `EARLY_THRESHOLD_LIMIT="12:00"`, `PUSHOVER_RETRY=60`, `PUSHOVER_EXPIRE=300`)을 `src/config.py`로 집결하여 중앙 모듈화 반환 로직(`get_monitor_start_time()`, `get_early_threshold_limit()`, `get_pushover_retry_expire()`) 구축 완료.
+
 

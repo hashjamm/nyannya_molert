@@ -3,7 +3,12 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 
-from config import get_kst_now, get_today_shift_info
+from config import (
+    get_kst_now,
+    get_today_shift_info,
+    get_monitor_start_time,
+    get_early_threshold_limit
+)
 from scraper import scrape_completed_early_reservations, scrape_all_completed_reservations
 from notifier import send_emergency_alarm, send_light_alarm
 from db import (
@@ -52,12 +57,14 @@ async def main():
         second=0, microsecond=0
     ).time()
     
-    morning_start_time_str = os.getenv("MONITOR_START_TIME", "09:40")
+    morning_start_time_str = get_monitor_start_time()
     morning_start_time_obj = now_kst.replace(
         hour=int(morning_start_time_str.split(":")[0]),
         minute=int(morning_start_time_str.split(":")[1]),
         second=0, microsecond=0
     ).time()
+
+    current_time_obj = now_kst.time()
 
     # =========================================================================
     # CASE 0: 오전 감시 시작 시각 이전 (현재 시각 < 09:40) -> 실행 중단
@@ -92,12 +99,14 @@ async def main():
             else:
                 logger.info("Morning alarm was sent earlier, but user has not acknowledged it yet.")
 
-        # 2. 크롤링 진행 및 조기 예약 완료 건 감지 (기본 threshold 12:00 이전)
+        # 2. 크롤링 진행 및 조기 예약 완료 건 감지
         try:
-            early_reservations = await scrape_completed_early_reservations(target_url, limit_time_str="12:00")
+            early_limit_str = get_early_threshold_limit()
+            early_reservations = await scrape_completed_early_reservations(target_url, limit_time_str=early_limit_str)
             
             if early_reservations:
-                logger.warning(f"Detected {len(early_reservations)} early reservations before 12:00.")
+                logger.warning(f"Detected {len(early_reservations)} early reservations before {early_limit_str}.")
+
                 
                 msg_lines = [
                     "🚨 조기 출근 예약 알람 🚨",

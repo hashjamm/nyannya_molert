@@ -166,7 +166,8 @@ sequenceDiagram
 | 컴포넌트 | 경로 | 주요 역할 및 기능 |
 |---|---|---|
 | **Workflow Pipeline** | [.github/workflows/check-reservation.yml](file:///c:/Users/lmh16/playground/nyannya_molert/.github/workflows/check-reservation.yml) | GitHub Actions 서버리스 파이프라인. `repository_dispatch` 및 `workflow_dispatch` 이벤트 수신, Python/Playwright 환경 빌드 및 Secrets 주입 후 스크립트 실행 |
-| **Shift Config Evaluator** | [src/config.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/config.py) | KST(UTC+9) 타임존 변환, 요일별 근무 스케줄 설정 파싱(`SHIFT_SCHEDULE_JSON` / 기본 월~수), 당일 근무 여부 및 출퇴근 시간 반환 |
+| **Shift Config Evaluator** | [src/config.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/config.py) | KST(UTC+9) 타임존 변환, 요일별 근무 스케줄 설정 파싱(`SHIFT_SCHEDULE_JSON` / 기본 월~수), 당일 근무 여부, 출퇴근 시간 및 시스템 시간/알람 상수(Single Source of Truth: `MONITOR_START_TIME`, `EARLY_THRESHOLD_LIMIT`, `PUSHOVER_RETRY`/`EXPIRE`) 중앙 반환 |
+
 | **Main Orchestrator** | [src/main.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/main.py) | 백엔드 진입점. 현재 시각 기반 실행 모드 분기(오프 / 오전 긴급 모드 / 근무 실시간 변동 모드) 및 모듈 간 비즈니스 오케스트레이션 |
 | **Web Scraper Engine** | [src/scraper.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/scraper.py) | Playwright Async Chromium 기반 셜록홈즈 아산점 웹 크롤러. 지수 백오프 재시도(Max 3회), 과거 슬롯 자동 오탐 방지 및 탐색 조기 종료 최적화 포함 |
 | **State & Persistence Manager** | [src/db.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/db.py) | Upstash Redis REST API 클라이언트. 24시간 TTL 연동, 당일 예약 목록 저장/조회, 아침 비상 알람 영수증(Receipt) 상태 및 Pushover Ack 확인 API 호출 |
