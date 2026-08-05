@@ -174,7 +174,8 @@ sequenceDiagram
 | **Main Orchestrator** | [src/main.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/main.py) | 백엔드 진입점. 현재 시각 기반 실행 모드 분기(오프 / 오전 긴급 모드 / 근무 실시간 변동 모드) 및 모듈 간 비즈니스 오케스트레이션 |
 | **Web Scraper Engine** | [src/scraper.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/scraper.py) | Playwright Async Chromium 기반 셜록홈즈 아산점 웹 크롤러. 지수 백오프 재시도(Max 3회), 과거 슬롯 자동 오탐 방지 및 탐색 조기 종료 최적화 포함 |
 | **State & Persistence Manager** | [src/db.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/db.py) | Upstash Redis REST API 클라이언트. 24시간 TTL 연동, 당일 예약 목록 저장/조회, 아침 비상 알람 영수증(Receipt) 상태 및 Pushover Ack 확인 API 호출 |
-| **Notification Dispatcher** | [src/notifier.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/notifier.py) | Pushover HTTP REST API 클라이언트. 다중 사용자(`PUSHOVER_USER_KEY`) 개별 지원, 유저별 맞춤 사운드 매핑, Priority 2(긴급 무음 우회) / Priority 0(가벼운 진동) 전송 |
+| **Notification Dispatcher** | [src/notifier.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/notifier.py) | Pushover HTTP REST API 클라이언트. 5종 전용 토큰 분류(`PUSHOVER_TOKEN_EMERGENCY`, `BRIEFING`, `DIFF_PLUS`, `DIFF_MINUS`, `END`) 및 단일 토큰 자동 폴백 지원, Priority 2 / Priority 0 전송 |
+
 
 ---
 

@@ -2,20 +2,20 @@ import os
 import requests
 import logging
 
-from config import get_pushover_retry_expire
+from config import get_pushover_retry_expire, get_pushover_token_for_type
 
 logger = logging.getLogger(__name__)
 
-def send_emergency_alarm(message: str) -> tuple[bool, str | None]:
+def send_emergency_alarm(message: str, alarm_type: str = "emergency") -> tuple[bool, str | None]:
     """
     Pushover API를 통해 priority=2 (Emergency Bypass) 알림을 스마트폰으로 전송합니다.
     성공 시 (True, receipt_id) 튜플을 반환하고, 실패 시 (False, None)을 반환합니다.
     """
-    token = os.getenv("PUSHOVER_API_TOKEN")
+    token = get_pushover_token_for_type(alarm_type)
     user_key_raw = os.getenv("PUSHOVER_USER_KEY")
     
     if not token or not user_key_raw:
-        logger.error("Pushover credentials (PUSHOVER_API_TOKEN, PUSHOVER_USER_KEY) are missing in environment variables.")
+        logger.error("Pushover credentials (API Token or User Key) are missing in environment variables.")
         return False, None
         
     user_keys = [k.strip() for k in user_key_raw.split(",") if k.strip()]
@@ -69,12 +69,12 @@ def send_emergency_alarm(message: str) -> tuple[bool, str | None]:
             
     return all_success, first_receipt
 
-def send_light_alarm(message: str, sound: str = "vibrate", title: str = "🔔 셜록홈즈 예약 변동 알림") -> bool:
+def send_light_alarm(message: str, sound: str = "vibrate", title: str = "🔔 셜록홈즈 예약 변동 알림", alarm_type: str = "default") -> bool:
     """
     Pushover API를 통해 priority=0 (Normal Priority) 가벼운 진동/음성 알림을 전송합니다.
     근무 시간대 예약 변동(신규/취소) 발생 시 사용됩니다.
     """
-    token = os.getenv("PUSHOVER_API_TOKEN")
+    token = get_pushover_token_for_type(alarm_type)
     user_key_raw = os.getenv("PUSHOVER_USER_KEY")
     
     if not token or not user_key_raw:
@@ -101,9 +101,10 @@ def send_light_alarm(message: str, sound: str = "vibrate", title: str = "🔔 �
         try:
             response = requests.post(url, data=payload, timeout=10)
             response.raise_for_status()
-            logger.info(f"Light alarm ({sound}) sent to user: {u_key[:6]}...")
+            logger.info(f"Light alarm ({alarm_type}/{sound}) sent to user: {u_key[:6]}...")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to send light alarm to user {u_key[:6]}...: {e}")
             all_success = False
             
     return all_success
+

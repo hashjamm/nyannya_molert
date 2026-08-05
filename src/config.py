@@ -41,6 +41,27 @@ def get_pushover_retry_expire() -> tuple[int, int]:
     expire = int(os.getenv("PUSHOVER_EXPIRE", str(DEFAULT_PUSHOVER_EXPIRE)))
     return retry, expire
 
+def get_pushover_token_for_type(alarm_type: str = "default") -> str | None:
+    """
+    알람 유형(emergency, briefing, diff_plus, diff_minus, end)에 해당하는 전용 Pushover API 토큰을 반환합니다.
+    해당 전용 토큰 환경변수가 정의되어 있지 않은 경우, 기본 PUSHOVER_API_TOKEN으로 자동 폴백됩니다.
+    """
+    token_env_map = {
+        "emergency": "PUSHOVER_TOKEN_EMERGENCY",
+        "briefing": "PUSHOVER_TOKEN_BRIEFING",
+        "diff_plus": "PUSHOVER_TOKEN_DIFF_PLUS",
+        "diff_minus": "PUSHOVER_TOKEN_DIFF_MINUS",
+        "end": "PUSHOVER_TOKEN_END",
+    }
+    env_var = token_env_map.get(alarm_type)
+    if env_var:
+        specific_token = os.getenv(env_var)
+        if specific_token:
+            return specific_token
+
+    return os.getenv("PUSHOVER_API_TOKEN")
+
+
 
 def get_kst_now() -> datetime:
     """현재 한국 시간(KST) datetime 객체를 반환합니다."""
