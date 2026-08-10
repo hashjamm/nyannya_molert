@@ -86,3 +86,8 @@
 ### 2026-08-10
 - **`src/main.py` NameError 버그 수정**:
   - `src/main.py` 파일의 `from config import ...` 문에 누락되어 있던 `get_pushover_token_for_type` 함수를 추가하여 GitHub Actions 실행 시 `NameError: name 'get_pushover_token_for_type' is not defined` 예외가 발생하는 문제를 해결 완료.
+
+### 2026-08-11
+- **아침 조기 출근 긴급 알람 Smart Silence 보완 (1회 발송 시 2차 사이렌 무조건 차단)**:
+  - 스마트폰 알림 배너 터치/스위프 시 Pushover API Ack 미전달 및 5분 만료로 인해 11:20 출근 전까지 10분마다 비상 사이렌이 반복 재발송되던 문제 해결.
+  - `src/main.py`에서 당일 아침 조기 비상 알람 발송 이력(`alarm_state`)이 DB에 존재할 경우, Pushover API Ack 클릭 여부와 무관하게 당일 2차/3차 비상 사이렌 알람을 무조건 스킵하도록 Smart Silence 로직을 보완 반영.

@@ -47,20 +47,17 @@ GitHub Secrets에 `SHERLOCK_URL` 또는 `EARLY_THRESHOLD_LIMIT`가 정의되어 
 
 ---
 
-## 4. Smart Silence 검증 토큰 불일치 및 다중 수신자 영수증 누락으로 인한 긴급 알람 반복 울림
+## 4. 아침 조기 출근 긴급 알람 10분 간격 중복 재발송 및 Smart Silence 개선
 
 ### 문제 상황
-오전 조기 출근 알람 수신 후 수신자(냔냐님)가 Pushover 화면에서 [확인 / OK (Acknowledge)] 버튼을 눌렀음에도 불구하고, 오전 내내 10분 간격 감시 때마다 비상 사이렌 알람이 계속해서 반복 재발송되는 현상.
+오전 조기 출근 비상 사이렌 알람 수신 후 수신자(냔냐님)가 스마트폰 알림 배너를 터치하거나 확인하였음에도 불구하고, Pushover API 상의 Ack 미처리 및 `PUSHOVER_EXPIRE`(5분) 만료 현상으로 인해 오전 내내 10분 간격 감시 때마다 비상 사이렌 알람이 11:20 출근 전까지 계속 반복 재발송되는 현상.
 
 ### 원인 및 분석
-1. **Pushover API Token 불일치**:
-   비상 알람은 `PUSHOVER_TOKEN_EMERGENCY` 토큰으로 발송되어 영수증이 해당 애플리케이션에 할당되었으나, `check_pushover_ack` 조회 시 기본 토큰(`PUSHOVER_API_TOKEN`)으로 조회를 요청하여 Pushover API가 조회를 거부하거나 `acknowledged: 0`으로 응답함.
-2. **단일 영수증 저장 문제**:
-   다중 수신자(`PUSHOVER_USER_KEY`) 환경에서 1번째 유저의 영수증만 DB에 저장되어, 2번째 수신자가 확인(OK)을 누르더라도 API 판정이 계속 "미확인" 상태로 유지됨.
+Pushover 스마트폰 알림 배너를 단순히 터치하거나 지우는 일반적인 사용 패턴으로는 Pushover API 상에 `acknowledged: 1` 상태가 전달되지 않음. 이에 따라 10분 주기 스케줄러가 실행될 때마다 "아직 확인되지 않았다"고 판단하여 10분마다 5분짜리 비상 사이렌 알람을 반복 재발송함.
 
 ### 해결책
-1. **검증 토큰 일치화**:
-   `check_pushover_ack` 호출 시 `get_pushover_token_for_type("emergency")`를 사용하여 생성 토큰과 검증 토큰을 100% 일치시킴.
-2. **다중 수신자 영수증 리스트(`receipts`) 저장 & Any Ack 판정**:
-   `send_emergency_alarm`이 반환하는 모든 수신자의 영수증 리스트를 DB에 저장하고, 수신자 중 **어느 누군가라도 1명이라도 확인(OK) 시 즉시 Smart Silence를 활성화**하여 2차 알람을 차단함 (`any(check_pushover_ack...)`).
+- **당일 1회 발송 시 무조건 2차 재발송 차단 (Smart Silence)**:
+  - 아침 조기 출근 알람은 1회 발송 시 5분 동안 1분 간격으로 총 5번의 비상 사이렌이 울리므로, 1회 발송만으로 조기 출근 알림 목적이 100% 달성됨.
+  - `src/main.py`에서 당일 아침 비상 알람 발송 이력(`alarm_state`)이 DB에 존재한다면, Pushover API Ack 버튼 전달 여부와 상관없이 **당일 아침의 2차/3차 비상 사이렌 재발송을 무조건 스킵**하도록 개편하여 중복 울림을 완벽 차단.
+
 

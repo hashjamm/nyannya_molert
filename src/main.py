@@ -16,8 +16,7 @@ from db import (
     get_today_reservations,
     save_today_reservations,
     get_morning_alarm_state,
-    save_morning_alarm_state,
-    check_pushover_ack
+    save_morning_alarm_state
 )
 
 logging.basicConfig(
@@ -87,24 +86,13 @@ async def main():
     if current_time_obj < start_time_obj:
         logger.info(f"Running [MORNING EMERGENCY MODE] (Current: {current_time_str} < Shift Start: {start_time_str})")
         
-        # 1. DB에서 오늘 아침 알람 발송 및 확인(Ack) 여부 검증 (Smart Silence)
+        # 1. DB에서 오늘 아침 알람 발송 여부 검증 (Smart Silence: 당일 1회 발송 완료 시 중복 사이렌 무조건 차단)
         alarm_state = get_morning_alarm_state(today_str)
-        emergency_token = get_pushover_token_for_type("emergency")
 
         if alarm_state:
-            receipts = alarm_state.get("receipts") or alarm_state.get("receipt")
-            if isinstance(receipts, str):
-                receipts = [receipts]
-
-            if receipts:
-                logger.info(f"Found {len(receipts)} existing morning alarm receipts: {receipts}")
-                is_acked = any(check_pushover_ack(r, emergency_token) for r in receipts)
-
-                if is_acked:
-                    logger.info("✨ User/NyanNya has ACKNOWLEDGED today's morning alarm. Smart Silence active -> Skipping 2nd alarm.")
-                    return
-                else:
-                    logger.info("Morning alarm was sent earlier, but no user has acknowledged it yet.")
+            sent_at = alarm_state.get("sent_at", "earlier today")
+            logger.info(f"✨ Morning emergency alarm was already sent today at {sent_at}. Smart Silence active -> Skipping 2nd alarm.")
+            return
 
         # 2. 크롤링 진행 및 조기 예약 완료 건 감지
         try:
