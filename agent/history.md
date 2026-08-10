@@ -83,8 +83,6 @@
       2) 다중 유저 환경에서 1번째 유저의 영수증만 저장되던 문제를 전체 영수증 리스트(`receipts`) 저장 및 `any()` 검증 방식으로 개편하여 수신자 중 누구나 확인 버튼 클릭 시 2차 사이렌 즉시 차단 완료.
     - GitHub Actions 워크플로우(`check-reservation.yml`) 환경변수 목록에 5종 전용 토큰 주입 파라미터 추가 완료.
 
-
-
-
-
-
+### 2026-08-10
+- **`src/main.py` NameError 버그 수정**:
+  - `src/main.py` 파일의 `from config import ...` 문에 누락되어 있던 `get_pushover_token_for_type` 함수를 추가하여 GitHub Actions 실행 시 `NameError: name 'get_pushover_token_for_type' is not defined` 예외가 발생하는 문제를 해결 완료.
