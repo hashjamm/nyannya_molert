@@ -8,6 +8,7 @@ from config import (
     get_today_shift_info,
     get_monitor_start_time,
     get_early_threshold_limit,
+    get_early_shift_start_time,
     get_pushover_token_for_type
 )
 from scraper import scrape_completed_early_reservations, scrape_all_completed_reservations
@@ -39,11 +40,22 @@ async def main():
     is_shift_day, start_time_str, end_time_str, weekday = get_today_shift_info(now_kst)
     
     logger.info(f"Starting Sherlock-Alarm execution. Date: {today_str} ({current_time_str} KST), Weekday: {weekday}")
-    logger.info(f"Shift Schedule -> Work Day: {is_shift_day}, Start: {start_time_str}, End: {end_time_str}")
+    logger.info(f"Shift Schedule -> Work Day: {is_shift_day}, Scheduled Start: {start_time_str}, End: {end_time_str}")
     
     if not is_shift_day:
         logger.info("Today is not a scheduled shift day. Skipping automatic monitoring.")
         return
+
+    # 당일 아침 긴급 알람 발송 여부 확인 (동적 출근 시각 조정 및 Smart Silence용)
+    alarm_state = get_morning_alarm_state(today_str)
+    is_early_shift = False
+
+    if alarm_state:
+        early_start_time_str = get_early_shift_start_time()
+        logger.info(f"🚨 Morning emergency alarm was recorded today (at {alarm_state.get('sent_at', 'earlier')}).")
+        logger.info(f"✨ Dynamically adjusting shift start time: {start_time_str} -> {early_start_time_str} (11:00 Early Work Mode)")
+        start_time_str = early_start_time_str
+        is_early_shift = True
 
     start_time_obj = now_kst.replace(
         hour=int(start_time_str.split(":")[0]),
@@ -81,14 +93,12 @@ async def main():
         return
 
     # =========================================================================
-    # MODE 1: 오전 긴급 모드 (현재 시각 < 출근 시각 11:20)
+    # MODE 1: 오전 긴급 모드 (현재 시각 < 출근 시각 11:00 / 11:20)
     # =========================================================================
     if current_time_obj < start_time_obj:
-        logger.info(f"Running [MORNING EMERGENCY MODE] (Current: {current_time_str} < Shift Start: {start_time_str})")
+        logger.info(f"Running [MORNING EMERGENCY MODE] (Current: {current_time_str} < Effective Shift Start: {start_time_str})")
         
         # 1. DB에서 오늘 아침 알람 발송 여부 검증 (Smart Silence: 당일 1회 발송 완료 시 중복 사이렌 무조건 차단)
-        alarm_state = get_morning_alarm_state(today_str)
-
         if alarm_state:
             sent_at = alarm_state.get("sent_at", "earlier today")
             logger.info(f"✨ Morning emergency alarm was already sent today at {sent_at}. Smart Silence active -> Skipping 2nd alarm.")
@@ -190,21 +200,26 @@ async def main():
             else:
                 logger.info("First reservation scan of the day in Work Mode. Sending Daily Shift Briefing alert.")
                 upcoming_reservations = [r for r in current_reservations if r["time"] > current_time_str]
+                
+                briefing_header = "📋 [오늘의 조기 출근 브리핑]" if is_early_shift else "📋 [오늘의 출근 브리핑]"
+                shift_tag = " (조기 출근 11:00)" if is_early_shift else ""
+                
                 if upcoming_reservations:
                     msg_lines = [
-                        "📋 [오늘의 출근 브리핑]",
-                        f"냔냐님! {current_time_str} 이후 오늘의 현재 예약 상황입니다 (총 {len(upcoming_reservations)}건):",
+                        briefing_header,
+                        f"냔냐님!{shift_tag} {current_time_str} 이후 오늘의 현재 예약 상황입니다 (총 {len(upcoming_reservations)}건):",
                         ""
                     ]
                     for res in sorted(upcoming_reservations, key=lambda x: x["time"]):
                         msg_lines.append(f"- {res['time']} | {res['theme']}")
                 else:
                     msg_lines = [
-                        "📋 [오늘의 출근 브리핑]",
-                        f"냔냐님! {current_time_str} 이후 오늘의 현재 예약 건이 없습니다. 편안한 근무 되세요! ✨"
+                        briefing_header,
+                        f"냔냐님!{shift_tag} {current_time_str} 이후 오늘의 현재 예약 건이 없습니다. 편안한 근무 되세요! ✨"
                     ]
                 
-                send_light_alarm("\n".join(msg_lines), sound="vibrate", title="📋 [출근 브리핑] 현재 예약 상황", alarm_type="briefing")
+                briefing_title = "📋 [조기 출근 브리핑] 현재 예약 상황" if is_early_shift else "📋 [출근 브리핑] 현재 예약 상황"
+                send_light_alarm("\n".join(msg_lines), sound="vibrate", title=briefing_title, alarm_type="briefing")
 
             save_today_reservations(today_str, current_reservations)
 

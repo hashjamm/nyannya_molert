@@ -11,6 +11,7 @@ KST = timezone(timedelta(hours=9))
 # 시스템 기본 시간 및 알람 설정 상수 (Single Source of Truth)
 DEFAULT_MONITOR_START_TIME = "09:40"      # 오전 감시 시작 시각 (KST)
 DEFAULT_EARLY_THRESHOLD_LIMIT = "12:00"  # 조기 예약 감지 상한 시각 (KST)
+DEFAULT_EARLY_SHIFT_START_TIME = "11:00" # 조기 출근 긴급 알람 발생 시 동적 출근 시각 (KST)
 DEFAULT_PUSHOVER_RETRY = 60              # 비상 알람 재시도 간격 (초)
 DEFAULT_PUSHOVER_EXPIRE = 300            # 비상 알람 만료 시간 (초)
 
@@ -34,6 +35,10 @@ def get_early_threshold_limit() -> str:
     """환경 변수 EARLY_THRESHOLD_LIMIT 또는 기본값(12:00)을 반환합니다."""
     val = os.getenv("EARLY_THRESHOLD_LIMIT")
     return val if val else DEFAULT_EARLY_THRESHOLD_LIMIT
+
+def get_early_shift_start_time() -> str:
+    """환경 변수 EARLY_SHIFT_START_TIME 또는 기본값(11:00)을 반환합니다."""
+    return os.getenv("EARLY_SHIFT_START_TIME", DEFAULT_EARLY_SHIFT_START_TIME)
 
 def get_pushover_retry_expire() -> tuple[int, int]:
     """Pushover 비상 알람 재시도 간격(retry) 및 만료 시간(expire)을 반환합니다."""

@@ -15,11 +15,11 @@ flowchart TD
 
     subgraph ENGINE["⚙️ Core Controller (src/main.py)"]
         A2 -->|Run python src/main.py| B1["main() Entrypoint"]
-        B1 --> B2["Schedule Evaluator\n(src/config.py)"]
+        B1 --> B2["Schedule & Alarm Evaluator\n(src/config.py & src/db.py)"]
         
         B2 -->|Shift Off / Off-work| B3["Stop Execution"]
-        B2 -->|Current < 11:30 KST| MODE1["Mode 1: Morning Emergency Mode"]
-        B2 -->|11:30 <= Current <= End KST| MODE2["Mode 2: Daytime Work Mode"]
+        B2 -->|Current < Start (11:00 or 11:20)| MODE1["Mode 1: Morning Emergency Mode"]
+        B2 -->|Start <= Current <= End KST| MODE2["Mode 2: Daytime Work Mode"]
     end
 
     subgraph SCRAPING["🕸️ Web Scraping Engine (src/scraper.py)"]
@@ -64,9 +64,9 @@ flowchart TD
 
 ## 2. 모드별 시퀀스 다이어그램 (Sequence Diagrams)
 
-### 2.1 Mode 1: 아침 긴급 알람 모드 (Morning Emergency Mode, `< 11:30 KST`)
+### 2.1 Mode 1: 아침 긴급 알람 모드 (Morning Emergency Mode, `< 11:20 KST (또는 비상 시 < 11:00)`)
 
-아침 출근 전 지정된 시각(12:00) 이전의 조기 예약 완료 건을 감지하여 스마트폰 무음/방해금지 모드를 우회하는 비상 알람을 발송합니다. **Smart Silence** 메커니즘을 통해 사용자가 이미 알람을 확인(Ack)한 경우 2차 알람을 자동 차단합니다.
+아침 출근 전 지정된 시각(12:00) 이전의 조기 예약 완료 건을 감지하여 스마트폰 무음/방해금지 모드를 우회하는 비상 알람을 발송합니다. **Smart Silence** 메커니즘을 통해 당일 1회 발송 완료 시 2차 중복 사이렌을 자동 차단하며, **긴급 알람 발생 시 당일 출근 시각을 자동으로 11:00으로 당겨 근무 모드로 조기 전환**합니다.
 
 ```mermaid
 sequenceDiagram
@@ -83,19 +83,19 @@ sequenceDiagram
 
     Scheduler->>Main: Execute main()
     Main->>Config: get_today_shift_info(now_kst)
-    Config-->>Main: (is_shift_day=True, start_time="11:30", end_time="16:00/18:00")
-    
-    Note over Main: Current Time < 11:30 KST -> Mode 1 Triggered
+    Config-->>Main: (is_shift_day=True, start_time="11:20", end_time="16:00/18:00")
     
     Main->>DB: get_morning_alarm_state(today_str)
-    DB-->>Main: alarm_state (receipt_id)
+    DB-->>Main: alarm_state (or None)
     
-    opt Exists receipt_id
-        Main->>DB: check_pushover_ack(receipt_id, api_token)
-        DB->>PushoverAPI: GET /1/receipts/{receipt_id}.json
-        PushoverAPI-->>DB: {acknowledged: 1}
-        DB-->>Main: is_acked = True
-        Note over Main: ✨ Smart Silence Active! Skip execution.
+    opt Exists alarm_state
+        Note over Main: ✨ Emergency alarm was sent -> Dynamically adjust start_time to 11:00
+    end
+    
+    Note over Main: Current Time < start_time -> Mode 1 Triggered
+
+    opt Exists alarm_state
+        Note over Main: ✨ Smart Silence Active! Skip duplicate emergency alarm.
     end
 
     Main->>Scraper: scrape_completed_early_reservations(url, limit_time="12:00")
@@ -108,6 +108,7 @@ sequenceDiagram
         Notifier->>Mobile: POST /1/messages.json (Priority=2, sound=siren/maple, retry=60, expire=300)
         Notifier-->>Main: (success=True, receipt_id)
         Main->>DB: save_morning_alarm_state(today_str, receipt_id)
+        Note over Main: Next runs will switch to 11:00 Early Work Mode
     else No Early Reservations
         Note over Main: No early slots detected. Finish safely.
     end
@@ -115,9 +116,9 @@ sequenceDiagram
 
 ---
 
-### 2.2 Mode 2: 근무 시간대 실시간 예약 변동 모드 (Daytime Work Mode, `11:30 ~ 18:00 KST`)
+### 2.2 Mode 2: 근무 시간대 실시간 예약 변동 모드 (Daytime Work Mode, `11:00 / 11:20 ~ 18:00 KST`)
 
-근무 시간 동안 10분 간격으로 전체 예약 상태를 스캔하여 직전 상태와 비교(Diffing)한 후, 신규 예약 또는 예약 취소 발생 시 가벼운 알림(Priority 0, 진동/음성)을 발송합니다.
+근무 시간(평상시 11:20~, 조기 출근 시 11:00~) 동안 10분 간격으로 전체 예약 상태를 스캔하여 직전 상태와 비교(Diffing)한 후, 신규 예약 또는 예약 취소 발생 시 가벼운 알림(Priority 0, 진동/음성)을 발송합니다.
 
 ```mermaid
 sequenceDiagram
@@ -131,7 +132,7 @@ sequenceDiagram
     participant Mobile as User & NyanNya Devices
 
     Scheduler->>Main: Execute main()
-    Note over Main: 11:30 <= Current Time <= End Time KST -> Mode 2 Triggered
+    Note over Main: start_time (11:00 or 11:20) <= Current Time <= End Time KST -> Mode 2 Triggered
 
     Main->>Scraper: scrape_all_completed_reservations(url)
     Scraper->>Site: Fetch All Theme Reservations via Playwright
@@ -141,7 +142,7 @@ sequenceDiagram
     Main->>DB: get_today_reservations(today_str)
     DB-->>Main: prev_reservations
 
-    alt First Scan of the Day (11:20 KST)
+    alt First Scan of the Day (11:00 on Early Shift / 11:20 on Normal Shift)
         Main->>Notifier: send_light_alarm(briefing_msg, sound="vibrate", priority=0)
         Notifier->>Mobile: Send Push Notification (📋 Daily Shift Briefing)
         Note over Main: Initial scan -> Send Briefing & Save base snapshot to DB
@@ -169,7 +170,7 @@ sequenceDiagram
 | 컴포넌트 | 경로 | 주요 역할 및 기능 |
 |---|---|---|
 | **Workflow Pipeline** | [.github/workflows/check-reservation.yml](file:///c:/Users/lmh16/playground/nyannya_molert/.github/workflows/check-reservation.yml) | GitHub Actions 서버리스 파이프라인. `repository_dispatch` 및 `workflow_dispatch` 이벤트 수신, Python/Playwright 환경 빌드 및 Secrets 주입 후 스크립트 실행 |
-| **Shift Config Evaluator** | [src/config.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/config.py) | KST(UTC+9) 타임존 변환, 요일별 근무 스케줄 설정 파싱(`SHIFT_SCHEDULE_JSON` / 기본 월~수), 당일 근무 여부, 출퇴근 시간 및 시스템 시간/알람 상수(Single Source of Truth: `MONITOR_START_TIME`, `EARLY_THRESHOLD_LIMIT`, `PUSHOVER_RETRY`/`EXPIRE`) 중앙 반환 |
+| **Shift Config Evaluator** | [src/config.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/config.py) | KST(UTC+9) 타임존 변환, 요일별 근무 스케줄 설정 파싱(`SHIFT_SCHEDULE_JSON` / 기본 월~수), 당일 근무 여부, 출퇴근 시간 및 시스템 시간/알람 상수(Single Source of Truth: `MONITOR_START_TIME`, `EARLY_THRESHOLD_LIMIT`, `EARLY_SHIFT_START_TIME`, `PUSHOVER_RETRY`/`EXPIRE`) 중앙 반환 |
 
 | **Main Orchestrator** | [src/main.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/main.py) | 백엔드 진입점. 현재 시각 기반 실행 모드 분기(오프 / 오전 긴급 모드 / 근무 실시간 변동 모드) 및 모듈 간 비즈니스 오케스트레이션 |
 | **Web Scraper Engine** | [src/scraper.py](file:///c:/Users/lmh16/playground/nyannya_molert/src/scraper.py) | Playwright Async Chromium 기반 셜록홈즈 아산점 웹 크롤러. 지수 백오프 재시도(Max 3회), 과거 슬롯 자동 오탐 방지 및 탐색 조기 종료 최적화 포함 |
